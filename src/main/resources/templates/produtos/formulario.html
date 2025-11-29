@@ -13,7 +13,6 @@
                         <h4 th:text="${produto.id == null ? 'Novo Produto' : 'Editar Produto'}">Produto</h4>
                     </div>
                     <div class="card-body">
-                        <!-- IMPORTANTE: enctype="multipart/form-data" é obrigatório para upload -->
                         <form th:action="@{/produto/salvar}" th:object="${produto}" method="post" enctype="multipart/form-data">
                             <input type="hidden" th:field="*{id}">
                             
@@ -21,12 +20,21 @@
                                 <label class="form-label">Nome do Produto</label>
                                 <input type="text" th:field="*{nome}" class="form-control" required>
                             </div>
-                            
-                            <!-- CAMPO DE UPLOAD DE IMAGEM -->
+
+                            <!-- SELEÇÃO DE CATEGORIA -->
                             <div class="mb-3">
-                                <label class="form-label">Imagem do Produto</label>
+                                <label class="form-label">Categoria</label>
+                                <select th:field="*{categoria}" class="form-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option th:each="cat : ${categorias}" 
+                                            th:value="${cat.id}" 
+                                            th:text="${cat.nome}"></option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Imagem</label>
                                 <input type="file" name="imagemFile" class="form-control" accept="image/png, image/jpeg">
-                                <div th:if="${produto.id != null}" class="form-text">Deixe vazio para manter a imagem atual.</div>
                             </div>
                             
                             <div class="mb-3">
@@ -40,13 +48,13 @@
                                     <input type="number" step="0.01" th:field="*{preco}" class="form-control" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Quantidade Estoque</label>
+                                    <label class="form-label">Estoque</label>
                                     <input type="number" th:field="*{quantidadeEstoque}" class="form-control" required>
                                 </div>
                             </div>
                             
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-success btn-lg">Salvar Produto</button>
+                                <button type="submit" class="btn btn-success btn-lg">Salvar</button>
                                 <a href="/" class="btn btn-outline-secondary">Cancelar</a>
                             </div>
                         </form>

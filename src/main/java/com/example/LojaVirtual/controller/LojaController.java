@@ -37,13 +37,20 @@ public class LojaController {
 
     // --- HOME (LISTA DE PRODUTOS) ---
     @GetMapping("/")
-    public String index(Model model, HttpSession session) {
+    public String index(@RequestParam(required = false) String termo,
+                        @RequestParam(required = false) Long categoriaId,
+                        Model model, HttpSession session) {
         if (getUsuarioLogado(session) == null) return "redirect:/login";
         
-        List<Produto> produtos = service.listarProdutos();
+        // Passa as categorias para o dropdown de filtro
+        model.addAttribute("categorias", service.listarCategorias());
+        model.addAttribute("termoAtual", termo);
+        model.addAttribute("categoriaAtual", categoriaId);
+
+        // Busca filtrada
+        List<Produto> produtos = service.listarProdutos(termo, categoriaId);
         model.addAttribute("produtos", produtos);
 
-        // Cria um mapa com as médias de cada produto para exibir nos cards
         Map<Long, Double> medias = new HashMap<>();
         for (Produto p : produtos) {
             medias.put(p.getId(), service.calcularMediaAvaliacoes(p));
@@ -189,6 +196,8 @@ public class LojaController {
     public String novoProdutoForm(Model model, HttpSession session) {
         if (getUsuarioLogado(session) == null) return "redirect:/login";
         model.addAttribute("produto", new Produto());
+        // Envia categorias para o select do form
+        model.addAttribute("categorias", service.listarCategorias());
         return "produtos/formulario";
     }
 
@@ -198,10 +207,14 @@ public class LojaController {
                                 HttpSession session) throws IOException {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
+        
         if (produto.getId() != null) {
             Produto antigo = service.buscarProduto(produto.getId());
             produto.setVendedor(antigo.getVendedor());
+            // Mantem categoria antiga se vier nula (opcional)
+            if(produto.getCategoria() == null) produto.setCategoria(antigo.getCategoria());
         }
+        
         service.salvarProduto(produto, u, file);
         return "redirect:/";
     }
@@ -212,10 +225,11 @@ public class LojaController {
         if (u == null) return "redirect:/login";
         Produto p = service.buscarProduto(id);
         if (!p.getVendedor().getId().equals(u.getId())) {
-            redirect.addFlashAttribute("erro", "Você só pode editar seus próprios produtos.");
+            redirect.addFlashAttribute("erro", "Sem permissão.");
             return "redirect:/";
         }
         model.addAttribute("produto", p);
+        model.addAttribute("categorias", service.listarCategorias());
         return "produtos/formulario";
     }
 
@@ -282,4 +296,5 @@ public class LojaController {
             return "redirect:/carrinho";
         }
     }
+    
 }

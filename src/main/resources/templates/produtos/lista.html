@@ -4,65 +4,15 @@
     <title>Loja Virtual</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
+    <!-- Estilos CSS mantidos (rating-badge, etc) -->
     <style>
-        .produto-img {
-            height: 200px;
-            object-fit: cover;
-            width: 100%;
-            background-color: #eee;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #aaa;
-            cursor: pointer;
-        }
-        .nav-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-right: 8px;
-            border: 1px solid white;
-        }
-        .nav-link-profile {
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-        }
-        .nav-link-profile:hover {
-            color: #ddd;
-        }
-        .card-link {
-            text-decoration: none;
-            color: inherit;
-        }
-        
-        /* ESTILO DO BADGE DE NOTA */
-        .rating-badge {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: rgba(255, 193, 7, 0.95); /* Amarelo Bootstrap */
-            color: #212529;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            opacity: 0; /* Invisível por padrão */
-            transition: opacity 0.3s ease-in-out;
-            z-index: 10;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        /* MOSTRAR AO PASSAR O MOUSE */
-        .card:hover .rating-badge {
-            opacity: 1;
-        }
+        .produto-img { height: 200px; object-fit: cover; width: 100%; background-color: #eee; display: flex; align-items: center; justify-content: center; color: #aaa; cursor: pointer; }
+        .nav-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 8px; border: 1px solid white; }
+        .nav-link-profile { color: white; text-decoration: none; display: flex; align-items: center; }
+        .nav-link-profile:hover { color: #ddd; }
+        .card-link { text-decoration: none; color: inherit; }
+        .rating-badge { position: absolute; top: 10px; left: 10px; background-color: rgba(255, 193, 7, 0.95); color: #212529; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s ease-in-out; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px; }
+        .card:hover .rating-badge { opacity: 1; }
     </style>
 </head>
 <body class="bg-light">
@@ -70,14 +20,13 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="/">Minha Loja</a>
-            
             <div class="ms-auto d-flex align-items-center text-white">
                 <a th:if="${usuarioAtual != null}" href="/perfil" class="nav-link-profile me-4" title="Editar Perfil">
                     <img th:if="${usuarioAtual.fotoPerfil != null}" th:src="@{/usuario/foto/{id}(id=${usuarioAtual.id})}" class="nav-avatar">
                     <img th:if="${usuarioAtual.fotoPerfil == null}" src="https://via.placeholder.com/32?text=U" class="nav-avatar">
                     <span th:text="${usuarioAtual.nome}">Usuário</span>
                 </a>
-                <a href="/carrinho" class="btn btn-warning me-2 position-relative">Carrinho</a>
+                <a href="/carrinho" class="btn btn-warning me-2">Carrinho</a>
                 <a href="/logout" class="btn btn-outline-light btn-sm">Sair</a>
             </div>
         </div>
@@ -85,27 +34,45 @@
 
     <div class="container">
         
-        <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
-        <div th:if="${sucesso}" class="alert alert-success" th:text="${sucesso}"></div>
+        <!-- BARRA DE PESQUISA E FILTROS -->
+        <div class="card p-3 mb-4 shadow-sm">
+            <form action="/" method="get" class="row g-2">
+                <div class="col-md-6">
+                    <input type="text" name="termo" class="form-control" placeholder="Buscar produtos..." th:value="${termoAtual}">
+                </div>
+                <div class="col-md-4">
+                    <select name="categoriaId" class="form-select">
+                        <option value="">Todas as Categorias</option>
+                        <option th:each="cat : ${categorias}" 
+                                th:value="${cat.id}" 
+                                th:text="${cat.nome}"
+                                th:selected="${categoriaId == cat.id}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Buscar</button>
+                </div>
+            </form>
+        </div>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2>Produtos à Venda</h2>
             <a href="/produto/novo" class="btn btn-success">+ Anunciar Produto</a>
         </div>
 
+        <div th:if="${produtos.empty}" class="alert alert-warning text-center">
+            Nenhum produto encontrado.
+        </div>
+
         <div class="row">
             <div class="col-md-3 mb-4" th:each="prod : ${produtos}">
-                <!-- Position relative é necessário para o rating-badge absoluto funcionar -->
                 <div class="card h-100 shadow-sm position-relative">
                     
-                    <!-- BADGE DE NOTA (Só aparece no hover) -->
                     <div class="rating-badge">
                         <i class="bi bi-star-fill text-dark"></i>
-                        <!-- Pega a média do mapa 'medias' usando o ID do produto -->
                         <span th:text="${#numbers.formatDecimal(medias.get(prod.id), 1, 1)}">0.0</span>
                     </div>
 
-                    <!-- Imagem Clicável (Link para Detalhes) -->
                     <a th:href="@{/produto/{id}(id=${prod.id})}" class="card-link">
                         <div th:if="${prod.imagem != null}">
                             <img th:src="@{/imagem/{id}(id=${prod.id})}" class="card-img-top produto-img" alt="Imagem do Produto">
@@ -117,6 +84,12 @@
 
                     <div class="card-body">
                         <h5 class="card-title text-truncate" th:text="${prod.nome}">Nome</h5>
+                        
+                        <!-- Exibir Categoria no Card -->
+                        <div class="mb-2">
+                            <span th:if="${prod.categoria != null}" class="badge bg-info text-dark" th:text="${prod.categoria.nome}">Cat</span>
+                        </div>
+
                         <h6 class="card-subtitle mb-2 text-success font-weight-bold">R$ <span th:text="${prod.preco}">0.00</span></h6>
                         <p class="card-text small text-muted" th:text="${prod.descricao}" style="height: 40px; overflow: hidden;">Desc</p>
                         
@@ -128,15 +101,13 @@
                         </div>
                     </div>
                     
+                    <!-- Footer mantido igual -->
                     <div class="card-footer bg-white border-top-0">
                         <div th:if="${prod.vendedor.id == usuarioAtual.id}" class="d-grid gap-2">
                             <a th:href="@{/produto/editar/{id}(id=${prod.id})}" class="btn btn-sm btn-outline-primary">Editar</a>
                         </div>
-
                         <div th:if="${prod.vendedor.id != usuarioAtual.id}">
-                            <a th:href="@{/produto/{id}(id=${prod.id})}" class="btn btn-sm btn-outline-dark w-100">
-                                Ver Detalhes
-                            </a>
+                            <a th:href="@{/produto/{id}(id=${prod.id})}" class="btn btn-sm btn-outline-dark w-100">Ver Detalhes</a>
                         </div>
                     </div>
                 </div>

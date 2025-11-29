@@ -1,6 +1,5 @@
 package com.example.LojaVirtual.repository;
 
-import com.example.LojaVirtual.model.ItemCarrinho;
 import com.example.LojaVirtual.model.ItemDesejo;
 import com.example.LojaVirtual.model.Produto;
 import com.example.LojaVirtual.model.Usuario;

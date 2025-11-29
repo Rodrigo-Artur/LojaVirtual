@@ -17,7 +17,17 @@ public class Usuario {
 
     private String senha;
 
+    // --- NOVOS CAMPOS DE PERFIL ---
     private byte[] fotoPerfil;
     
-    private String tipoFoto; // ex: image/jpeg
+    private String tipoFoto;
+
+    // --- ROLE DO USUÁRIO ---
+    @Enumerated(EnumType.STRING)
+    private Role role; // ADMIN ou USER
+
+    // Helper para verificar se é admin no HTML
+    public boolean isAdmin() {
+        return this.role == Role.ADMIN;
+    }
 }

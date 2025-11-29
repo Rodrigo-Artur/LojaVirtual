@@ -29,8 +29,12 @@ public class Produto {
     @ManyToOne
     @JoinColumn(name = "vendedor_id")
     private Usuario vendedor;
+    
+    @ManyToOne
+    @JoinColumn(name = "categoria_id")
+    private Categoria categoria;
 
     private byte[] imagem;
     
-    private String tipoImagem; // Ex: image/jpeg, image/png
+    private String tipoImagem;
 }
