@@ -17,8 +17,6 @@ public class Usuario {
 
     private String senha;
 
-    // --- NOVOS CAMPOS PARA FOTO DE PERFIL ---
-    @Lob
     private byte[] fotoPerfil;
     
     private String tipoFoto; // ex: image/jpeg

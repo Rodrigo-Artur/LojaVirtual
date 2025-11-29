@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Detalhes do Produto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        .detalhe-img {
+            max-height: 500px;
+            width: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        .nav-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 8px;
+            border: 1px solid white;
+        }
+        .nav-link-profile {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        .nav-link-profile:hover {
+            color: #ddd;
+        }
+        .btn-desejo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .btn-desejo:hover {
+            transform: scale(1.1);
+            background: #f8f9fa;
+        }
+        .icon-desejo { font-size: 1.5rem; color: #333; }
+        .icon-desejo-active { font-size: 1.5rem; color: #dc3545; }
+        .star-rating { color: #ffc107; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">Minha Loja</a>
+            <div class="ms-auto d-flex align-items-center text-white">
+                <a th:if="${usuarioAtual != null}" href="/perfil" class="nav-link-profile me-4">
+                    <img th:if="${usuarioAtual.fotoPerfil != null}" th:src="@{/usuario/foto/{id}(id=${usuarioAtual.id})}" class="nav-avatar">
+                    <img th:if="${usuarioAtual.fotoPerfil == null}" src="https://via.placeholder.com/32?text=U" class="nav-avatar">
+                    <span th:text="${usuarioAtual.nome}">Usuário</span>
+                </a>
+                <a href="/carrinho" class="btn btn-warning me-2">Carrinho</a>
+                <a href="/logout" class="btn btn-outline-light btn-sm">Sair</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
+        <div th:if="${sucesso}" class="alert alert-success" th:text="${sucesso}"></div>
+
+        <a href="/" class="btn btn-outline-secondary mb-4">&larr; Voltar para a Loja</a>
+
+        <div class="card shadow-sm mb-5">
+            <div class="row g-0">
+                <div class="col-md-6 p-4 bg-white border-end position-relative">
+                    <form th:if="${produto.vendedor.id != usuarioAtual.id}" action="/desejos/toggle" method="post">
+                        <input type="hidden" name="produtoId" th:value="${produto.id}">
+                        <button type="submit" class="btn-desejo" title="Adicionar à Lista de Desejos">
+                            <i th:if="${!estaNosDesejos}" class="bi bi-bookmark icon-desejo"></i>
+                            <i th:if="${estaNosDesejos}" class="bi bi-bookmark-fill icon-desejo-active"></i>
+                        </button>
+                    </form>
+
+                    <div th:if="${produto.imagem != null}" class="w-100 text-center">
+                        <img th:src="@{/imagem/{id}(id=${produto.id})}" class="detalhe-img" alt="Imagem do Produto">
+                    </div>
+                    <div th:if="${produto.imagem == null}" class="w-100 text-center py-5 text-muted">
+                        <h3>Sem Imagem</h3>
+                    </div>
+                </div>
+
+                <div class="col-md-6 p-4 d-flex flex-column">
+                    <h1 class="mb-2" th:text="${produto.nome}">Nome do Produto</h1>
+                    
+                    <!-- MÉDIA DE AVALIAÇÕES -->
+                    <div class="mb-3 d-flex align-items-center">
+                        <span class="h4 me-2 mb-0 fw-bold text-warning" th:text="${#numbers.formatDecimal(mediaAvaliacoes, 1, 1)}">4.5</span>
+                        <div class="star-rating me-2">
+                             <i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1, 5)}"
+                                th:class="${mediaAvaliacoes >= i} ? 'bi bi-star-fill' : (${mediaAvaliacoes >= i - 0.5} ? 'bi bi-star-half' : 'bi bi-star')"></i>
+                        </div>
+                        <small class="text-muted">(<span th:text="${avaliacoes.size()}"></span> avaliações)</small>
+                    </div>
+
+                    <p class="text-muted mb-4">Vendido por: <strong th:text="${produto.vendedor.nome}">Vendedor</strong></p>
+                    <h2 class="text-success fw-bold mb-4">R$ <span th:text="${produto.preco}">0.00</span></h2>
+
+                    <div class="mb-4">
+                        <h5>Descrição:</h5>
+                        <p class="text-secondary" th:text="${produto.descricao}">Descrição...</p>
+                    </div>
+
+                    <div class="mt-auto">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span th:class="${produto.quantidadeEstoque > 0 ? 'badge bg-success fs-6' : 'badge bg-danger fs-6'}" 
+                                  th:text="${produto.quantidadeEstoque > 0 ? 'Estoque disponível: ' + produto.quantidadeEstoque : 'Produto Esgotado'}">
+                            </span>
+                        </div>
+
+                        <div th:if="${produto.vendedor.id == usuarioAtual.id}" class="d-grid gap-2">
+                            <div class="alert alert-warning text-center">Este produto é seu.</div>
+                            <a th:href="@{/produto/editar/{id}(id=${produto.id})}" class="btn btn-primary">Editar Produto</a>
+                            <a th:href="@{/produto/deletar/{id}(id=${produto.id})}" class="btn btn-outline-danger" onclick="return confirm('Tem certeza?')">Excluir Produto</a>
+                        </div>
+
+                        <div th:if="${produto.vendedor.id != usuarioAtual.id}">
+                            <form th:if="${produto.quantidadeEstoque > 0}" action="/carrinho/adicionar" method="post">
+                                <input type="hidden" name="produtoId" th:value="${produto.id}">
+                                <div class="row mb-3">
+                                    <div class="col-4">
+                                        <label class="form-label">Quantidade:</label>
+                                        <input type="number" name="quantidade" value="1" min="1" 
+                                               th:max="${produto.quantidadeEstoque}" class="form-control form-control-lg">
+                                    </div>
+                                    <div class="col-8 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-success btn-lg w-100">Adicionar ao Carrinho</button>
+                                    </div>
+                                </div>
+                            </form>
+                            <button th:if="${produto.quantidadeEstoque <= 0}" type="button" class="btn btn-danger btn-lg w-100" disabled>Produto Indisponível</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO DE AVALIAÇÕES -->
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <h3 class="mb-4">Avaliações dos Clientes</h3>
+
+                <!-- FORMULÁRIO DE AVALIAÇÃO (Só aparece se puder avaliar) -->
+                <div th:if="${podeAvaliar}" class="card mb-4 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <strong>Avaliar este produto</strong>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/produto/{id}/avaliar(id=${produto.id})}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label">Sua Nota:</label>
+                                <div class="rating">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="nota" value="5" id="s5" checked>
+                                        <label class="form-check-label text-warning" for="s5"><i class="bi bi-star-fill"></i> 5</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="nota" value="4" id="s4">
+                                        <label class="form-check-label text-warning" for="s4"><i class="bi bi-star-fill"></i> 4</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="nota" value="3" id="s3">
+                                        <label class="form-check-label text-warning" for="s3"><i class="bi bi-star-fill"></i> 3</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="nota" value="2" id="s2">
+                                        <label class="form-check-label text-warning" for="s2"><i class="bi bi-star-fill"></i> 2</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="nota" value="1" id="s1">
+                                        <label class="form-check-label text-warning" for="s1"><i class="bi bi-star-fill"></i> 1</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Comentário:</label>
+                                <textarea name="comentario" class="form-control" rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Enviar Avaliação</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- LISTA DE AVALIAÇÕES -->
+                <div th:if="${avaliacoes.empty}" class="text-center text-muted py-4">
+                    <p>Este produto ainda não tem avaliações.</p>
+                </div>
+
+                <div th:each="av : ${avaliacoes}" class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <img th:if="${av.usuario.fotoPerfil != null}" th:src="@{/usuario/foto/{id}(id=${av.usuario.id})}" 
+                                     class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                <img th:if="${av.usuario.fotoPerfil == null}" src="https://via.placeholder.com/40" 
+                                     class="rounded-circle me-2">
+                                <strong th:text="${av.usuario.nome}">Nome</strong>
+                            </div>
+                            <small class="text-muted" th:text="${#temporals.format(av.dataAvaliacao, 'dd/MM/yyyy')}">Data</small>
+                        </div>
+                        <div class="mt-2 text-warning">
+                            <i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1, av.nota)}"></i>
+                        </div>
+                        <p class="mt-2 mb-0" th:text="${av.comentario}">Comentário</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

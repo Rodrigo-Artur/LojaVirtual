@@ -3,6 +3,7 @@
 <head>
     <title>Meu Perfil</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         .perfil-img-preview {
             width: 150px;
@@ -15,7 +16,6 @@
 </head>
 <body class="bg-light">
     
-    <!-- Navbar simplificada para voltar -->
     <nav class="navbar navbar-dark bg-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="/">Minha Loja</a>
@@ -25,9 +25,24 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-8">
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Editar Perfil</h4>
+                    <div>
+                        <!-- NOVO BOTÃO HISTÓRICO -->
+                        <a href="/historico" class="btn btn-info text-white me-2">
+                            <i class="bi bi-clock-history"></i> Histórico de Compras
+                        </a>
+                        <a href="/desejos" class="btn btn-warning">
+                            <i class="bi bi-bookmark-heart-fill"></i> Lista de Desejos
+                        </a>
+                    </div>
+                </div>
+
                 <div class="card shadow">
+                    <!-- Conteúdo do formulário mantido igual... -->
                     <div class="card-header bg-primary text-white">
-                        <h4>Editar Perfil</h4>
+                        <h5 class="m-0">Dados do Usuário</h5>
                     </div>
                     <div class="card-body">
                         
@@ -37,7 +52,6 @@
                         <form action="/perfil/atualizar" method="post" enctype="multipart/form-data">
                             
                             <div class="text-center mb-4">
-                                <!-- Mostra foto atual ou placeholder -->
                                 <img th:if="${usuario.fotoPerfil != null}" 
                                      th:src="@{/usuario/foto/{id}(id=${usuario.id})}" 
                                      class="perfil-img-preview mb-2">

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Histórico de Compras</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">Minha Loja</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-clock-history"></i> Histórico de Compras</h2>
+            <a href="/perfil" class="btn btn-outline-secondary">Voltar ao Perfil</a>
+        </div>
+
+        <div th:if="${compras.empty}" class="alert alert-info text-center py-5">
+            <h4>Você ainda não realizou nenhuma compra.</h4>
+            <a href="/" class="btn btn-primary mt-2">Ir para a Loja</a>
+        </div>
+
+        <div th:if="${!compras.empty}">
+            <div th:each="compra : ${compras}" class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Pedido #<span th:text="${compra.id}"></span></strong>
+                        <span class="text-muted ms-2" th:text="${#temporals.format(compra.dataCompra, 'dd/MM/yyyy HH:mm')}">Data</span>
+                    </div>
+                    <span class="badge bg-success fs-6">Total: R$ <span th:text="${compra.total}"></span></span>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li th:each="item : ${compra.itens}" class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <a th:href="@{/produto/{id}(id=${item.produto.id})}">
+                                <img th:if="${item.produto.imagem != null}" 
+                                     th:src="@{/imagem/{id}(id=${item.produto.id})}" 
+                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" class="me-3">
+                                <div th:if="${item.produto.imagem == null}" 
+                                     style="width: 50px; height: 50px; background: #eee; border-radius: 4px;" class="me-3"></div>
+                            </a>
+                            <div>
+                                <h6 class="mb-0">
+                                    <a th:href="@{/produto/{id}(id=${item.produto.id})}" class="text-decoration-none text-dark" th:text="${item.produto.nome}">Produto</a>
+                                </h6>
+                                <small class="text-muted">
+                                    <span th:text="${item.quantidade}"></span>x R$ <span th:text="${item.precoUnitarioSnapshot}"></span>
+                                </small>
+                            </div>
+                        </div>
+                        <span class="fw-bold">R$ <span th:text="${item.subtotal}"></span></span>
+                        
+                        <!-- Botão Avaliar (leva para a página do produto) -->
+                        <a th:href="@{/produto/{id}(id=${item.produto.id})}" class="btn btn-sm btn-outline-warning ms-3">
+                            <i class="bi bi-star"></i> Avaliar
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

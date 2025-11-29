@@ -30,8 +30,6 @@ public class Produto {
     @JoinColumn(name = "vendedor_id")
     private Usuario vendedor;
 
-    // --- NOVOS CAMPOS PARA IMAGEM ---
-    @Lob // Indica que é um objeto grande (Large Object)
     private byte[] imagem;
     
     private String tipoImagem; // Ex: image/jpeg, image/png

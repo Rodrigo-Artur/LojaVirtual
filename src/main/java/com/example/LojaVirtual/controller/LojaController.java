@@ -14,6 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 public class LojaController {
@@ -32,16 +35,77 @@ public class LojaController {
         }
     }
 
+    // --- HOME (LISTA DE PRODUTOS) ---
     @GetMapping("/")
     public String index(Model model, HttpSession session) {
         if (getUsuarioLogado(session) == null) return "redirect:/login";
         
-        model.addAttribute("produtos", service.listarProdutos());
+        List<Produto> produtos = service.listarProdutos();
+        model.addAttribute("produtos", produtos);
+
+        // Cria um mapa com as médias de cada produto para exibir nos cards
+        Map<Long, Double> medias = new HashMap<>();
+        for (Produto p : produtos) {
+            medias.put(p.getId(), service.calcularMediaAvaliacoes(p));
+        }
+        model.addAttribute("medias", medias);
+
         return "produtos/lista";
     }
 
-    // --- IMAGENS (PRODUTO E PERFIL) ---
+    // --- DETALHES DO PRODUTO ---
+    @GetMapping("/produto/{id}")
+    public String verDetalhesProduto(@PathVariable Long id, Model model, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+        
+        try {
+            Produto produto = service.buscarProduto(id);
+            model.addAttribute("produto", produto);
+            
+            boolean estaNosDesejos = service.estaNaListaDeDesejos(u, produto);
+            model.addAttribute("estaNosDesejos", estaNosDesejos);
+
+            model.addAttribute("avaliacoes", service.listarAvaliacoes(produto));
+            model.addAttribute("mediaAvaliacoes", service.calcularMediaAvaliacoes(produto));
+            model.addAttribute("podeAvaliar", service.podeAvaliar(u, produto));
+            
+            return "produtos/detalhe";
+        } catch (Exception e) {
+            return "redirect:/";
+        }
+    }
     
+    @PostMapping("/produto/{id}/avaliar")
+    public String avaliarProduto(@PathVariable Long id, 
+                                 @RequestParam Integer nota, 
+                                 @RequestParam String comentario, 
+                                 HttpSession session, 
+                                 RedirectAttributes redirect) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+        
+        try {
+            service.salvarAvaliacao(id, nota, comentario, u);
+            redirect.addFlashAttribute("sucesso", "Avaliação enviada com sucesso!");
+        } catch (Exception e) {
+            redirect.addFlashAttribute("erro", e.getMessage());
+        }
+        return "redirect:/produto/" + id;
+    }
+
+    // --- HISTÓRICO ---
+    @GetMapping("/historico")
+    public String verHistorico(Model model, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+        
+        model.addAttribute("compras", service.listarHistorico(u));
+        return "usuario/historico";
+    }
+
+    // --- OUTROS MÉTODOS (IMAGEM, PERFIL, CRUD, CARRINHO) MANTIDOS IGUAIS ---
+
     @GetMapping("/imagem/{id}")
     @ResponseBody
     public ResponseEntity<byte[]> exibirImagemProduto(@PathVariable Long id) {
@@ -63,21 +127,15 @@ public class LojaController {
                     .contentType(MediaType.valueOf(usuario.getTipoFoto()))
                     .body(usuario.getFotoPerfil());
         }
-        // Retorna 404 se não tiver foto
         return ResponseEntity.notFound().build();
     }
-
-    // --- PERFIL DO USUÁRIO ---
 
     @GetMapping("/perfil")
     public String paginaPerfil(Model model, HttpSession session) {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
-        
-        // Recarrega usuário do banco para garantir dados frescos
         Usuario usuarioAtualizado = service.buscarUsuario(u.getId());
         model.addAttribute("usuario", usuarioAtualizado);
-        
         return "usuario/perfil";
     }
 
@@ -90,13 +148,9 @@ public class LojaController {
                                   RedirectAttributes redirect) {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
-
         try {
             Usuario usuarioAtualizado = service.atualizarPerfil(u.getId(), nome, email, senha, foto);
-            
-            // ATUALIZA A SESSÃO para refletir as mudanças (ex: nova foto na navbar)
             session.setAttribute("usuarioLogado", usuarioAtualizado);
-            
             redirect.addFlashAttribute("sucesso", "Perfil atualizado com sucesso!");
         } catch (Exception e) {
             redirect.addFlashAttribute("erro", "Erro ao atualizar perfil: " + e.getMessage());
@@ -104,7 +158,32 @@ public class LojaController {
         return "redirect:/perfil";
     }
 
-    // --- PRODUTOS ---
+    @GetMapping("/desejos")
+    public String verListaDesejos(Model model, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+        model.addAttribute("itensDesejo", service.listarDesejos(u));
+        return "usuario/desejos";
+    }
+
+    @PostMapping("/desejos/toggle")
+    public String alternarDesejo(@RequestParam Long produtoId, HttpSession session, RedirectAttributes redirect) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+        try {
+            service.alternarDesejo(produtoId, u);
+        } catch (Exception e) {
+            redirect.addFlashAttribute("erro", e.getMessage());
+        }
+        return "redirect:/produto/" + produtoId;
+    }
+
+    @GetMapping("/desejos/remover/{id}")
+    public String removerDesejo(@PathVariable Long id, HttpSession session) {
+        if (getUsuarioLogado(session) == null) return "redirect:/login";
+        service.removerDesejo(id);
+        return "redirect:/desejos";
+    }
 
     @GetMapping("/produto/novo")
     public String novoProdutoForm(Model model, HttpSession session) {
@@ -119,12 +198,10 @@ public class LojaController {
                                 HttpSession session) throws IOException {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
-        
         if (produto.getId() != null) {
             Produto antigo = service.buscarProduto(produto.getId());
             produto.setVendedor(antigo.getVendedor());
         }
-        
         service.salvarProduto(produto, u, file);
         return "redirect:/";
     }
@@ -133,7 +210,6 @@ public class LojaController {
     public String editarProduto(@PathVariable Long id, Model model, RedirectAttributes redirect, HttpSession session) {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
-
         Produto p = service.buscarProduto(id);
         if (!p.getVendedor().getId().equals(u.getId())) {
             redirect.addFlashAttribute("erro", "Você só pode editar seus próprios produtos.");
@@ -147,7 +223,6 @@ public class LojaController {
     public String deletarProduto(@PathVariable Long id, RedirectAttributes redirect, HttpSession session) {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
-
         Produto p = service.buscarProduto(id);
         if (!p.getVendedor().getId().equals(u.getId())) {
             redirect.addFlashAttribute("erro", "Você só pode remover seus próprios produtos.");
@@ -157,17 +232,12 @@ public class LojaController {
         return "redirect:/";
     }
 
-    // --- CARRINHO ---
-
     @GetMapping("/carrinho")
     public String verCarrinho(Model model, HttpSession session) {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
-
         model.addAttribute("itens", service.listarCarrinho(u));
-        Double total = service.listarCarrinho(u).stream()
-            .mapToDouble(i -> i.getSubtotal())
-            .sum();
+        Double total = service.listarCarrinho(u).stream().mapToDouble(i -> i.getSubtotal()).sum();
         model.addAttribute("total", total);
         return "carrinho/lista";
     }
@@ -176,14 +246,13 @@ public class LojaController {
     public String adicionarAoCarrinho(@RequestParam Long produtoId, @RequestParam Integer quantidade, RedirectAttributes redirect, HttpSession session) {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
-
         try {
             service.adicionarAoCarrinho(produtoId, quantidade, u);
             redirect.addFlashAttribute("sucesso", "Produto adicionado ao carrinho!");
         } catch (Exception e) {
             redirect.addFlashAttribute("erro", e.getMessage());
         }
-        return "redirect:/";
+        return "redirect:/produto/" + produtoId;
     }
 
     @PostMapping("/carrinho/atualizar")
@@ -204,11 +273,10 @@ public class LojaController {
     public String finalizarCompra(RedirectAttributes redirect, HttpSession session) {
         Usuario u = getUsuarioLogado(session);
         if (u == null) return "redirect:/login";
-
         try {
             service.finalizarCompra(u);
-            redirect.addFlashAttribute("sucesso", "Compra realizada com sucesso! O estoque foi atualizado.");
-            return "redirect:/"; 
+            redirect.addFlashAttribute("sucesso", "Compra realizada com sucesso! Verifique seu histórico.");
+            return "redirect:/historico";
         } catch (Exception e) {
             redirect.addFlashAttribute("erro", "Erro ao finalizar compra: " + e.getMessage());
             return "redirect:/carrinho";
