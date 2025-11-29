@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Login - Loja Virtual</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center" style="height: 100vh;">
+    
+    <div class="card shadow p-4" style="max-width: 400px; width: 100%;">
+        <h3 class="text-center mb-4">Loja Virtual</h3>
+        
+        <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
+        <div th:if="${sucesso}" class="alert alert-success" th:text="${sucesso}"></div>
+
+        <form action="/login" method="post">
+            <div class="mb-3">
+                <label>Email</label>
+                <input type="email" name="email" class="form-control" required placeholder="seu@email.com">
+            </div>
+            <div class="mb-3">
+                <label>Senha</label>
+                <input type="password" name="senha" class="form-control" required placeholder="******">
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mb-3">Entrar</button>
+        </form>
+        
+        <div class="text-center">
+            <a href="/registro">Não tem conta? Cadastre-se</a>
+        </div>
+    </div>
+
+</body>
+</html>

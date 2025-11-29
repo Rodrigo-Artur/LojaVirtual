@@ -11,4 +11,15 @@ public class Usuario {
     private Long id;
     
     private String nome;
+
+    @Column(unique = true)
+    private String email;
+
+    private String senha;
+
+    // --- NOVOS CAMPOS PARA FOTO DE PERFIL ---
+    @Lob
+    private byte[] fotoPerfil;
+    
+    private String tipoFoto; // ex: image/jpeg
 }

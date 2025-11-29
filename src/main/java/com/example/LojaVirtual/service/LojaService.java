@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class LojaService {
@@ -21,9 +22,52 @@ public class LojaService {
     @Autowired private ItemCarrinhoRepository carrinhoRepo;
     @Autowired private UsuarioRepository usuarioRepo;
 
-    // --- Usuário ---
+    // --- Autenticação e Usuário ---
+    
+    // CORREÇÃO: Adicionado @Transactional aqui para permitir leitura da foto (LOB)
+    @Transactional(readOnly = true)
     public Usuario buscarUsuario(Long id) {
         return usuarioRepo.findById(id).orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+    }
+    
+    // CORREÇÃO: Adicionado @Transactional aqui também, pois o login carrega o usuário e sua foto
+    @Transactional(readOnly = true)
+    public Usuario autenticar(String email, String senha) throws Exception {
+        return usuarioRepo.findByEmailAndSenha(email, senha)
+                .orElseThrow(() -> new Exception("Email ou senha inválidos"));
+    }
+
+    public void cadastrarUsuario(Usuario usuario) throws Exception {
+        if (usuarioRepo.findByEmail(usuario.getEmail()).isPresent()) {
+            throw new Exception("Este email já está cadastrado.");
+        }
+        usuarioRepo.save(usuario);
+    }
+
+    @Transactional
+    public Usuario atualizarPerfil(Long usuarioId, String nome, String email, String senha, MultipartFile foto) throws Exception {
+        Usuario usuario = buscarUsuario(usuarioId);
+        
+        if (!usuario.getEmail().equals(email)) {
+            Optional<Usuario> existente = usuarioRepo.findByEmail(email);
+            if (existente.isPresent()) {
+                throw new Exception("Email já está em uso por outro usuário.");
+            }
+        }
+
+        usuario.setNome(nome);
+        usuario.setEmail(email);
+        
+        if (senha != null && !senha.trim().isEmpty()) {
+            usuario.setSenha(senha);
+        }
+
+        if (foto != null && !foto.isEmpty()) {
+            usuario.setFotoPerfil(foto.getBytes());
+            usuario.setTipoFoto(foto.getContentType());
+        }
+
+        return usuarioRepo.save(usuario);
     }
     
     public List<Usuario> listarUsuarios() { return usuarioRepo.findAll(); }
@@ -40,8 +84,7 @@ public class LojaService {
     }
 
     @Transactional
-    public void salvarProduto(Produto produto, Long vendedorId, MultipartFile file) throws IOException {
-        Usuario vendedor = buscarUsuario(vendedorId);
+    public void salvarProduto(Produto produto, Usuario vendedor, MultipartFile file) throws IOException {
         produto.setVendedor(vendedor);
 
         if (file != null && !file.isEmpty()) {
@@ -67,17 +110,15 @@ public class LojaService {
 
     // --- Carrinho ---
     @Transactional(readOnly = true)
-    public List<ItemCarrinho> listarCarrinho(Long usuarioId) {
-        Usuario comprador = buscarUsuario(usuarioId);
+    public List<ItemCarrinho> listarCarrinho(Usuario comprador) {
         return carrinhoRepo.findByComprador(comprador);
     }
 
     @Transactional
-    public void adicionarAoCarrinho(Long produtoId, Integer quantidade, Long usuarioId) throws Exception {
+    public void adicionarAoCarrinho(Long produtoId, Integer quantidade, Usuario comprador) throws Exception {
         Produto produto = buscarProduto(produtoId);
-        Usuario comprador = buscarUsuario(usuarioId);
 
-        if (produto.getVendedor().getId().equals(usuarioId)) {
+        if (produto.getVendedor().getId().equals(comprador.getId())) {
             throw new Exception("Você não pode comprar seu próprio produto!");
         }
 
@@ -114,10 +155,8 @@ public class LojaService {
         carrinhoRepo.deleteById(itemId);
     }
 
-    // --- FINALIZAR COMPRA (CORRIGIDO) ---
     @Transactional
-    public void finalizarCompra(Long usuarioId) throws Exception {
-        Usuario comprador = buscarUsuario(usuarioId);
+    public void finalizarCompra(Usuario comprador) throws Exception {
         List<ItemCarrinho> itens = carrinhoRepo.findByComprador(comprador);
 
         if (itens.isEmpty()) {
@@ -125,24 +164,17 @@ public class LojaService {
         }
 
         for (ItemCarrinho item : itens) {
-            // CORREÇÃO CRÍTICA: Carregamos o produto do repositório para garantir 
-            // que estamos manipulando a entidade gerenciada correta.
             Produto produto = produtoRepo.findById(item.getProduto().getId())
                     .orElseThrow(() -> new Exception("Produto não encontrado"));
 
-            // Validação de estoque
             if (item.getQuantidade() > produto.getQuantidadeEstoque()) {
                 throw new Exception("Estoque insuficiente para o produto: " + produto.getNome());
             }
 
-            // Atualiza o estoque
             int novoEstoque = produto.getQuantidadeEstoque() - item.getQuantidade();
             produto.setQuantidadeEstoque(novoEstoque);
-            
-            // Salva explicitamente o produto atualizado
             produtoRepo.save(produto);
 
-            // Remove o item do carrinho
             carrinhoRepo.delete(item);
         }
     }

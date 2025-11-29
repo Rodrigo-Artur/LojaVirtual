@@ -1,7 +1,9 @@
 package com.example.LojaVirtual.controller;
 
 import com.example.LojaVirtual.model.Produto;
+import com.example.LojaVirtual.model.Usuario;
 import com.example.LojaVirtual.service.LojaService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,29 +20,31 @@ public class LojaController {
 
     @Autowired private LojaService service;
 
-    public static Long USUARIO_ATUAL_ID = 1L; 
+    private Usuario getUsuarioLogado(HttpSession session) {
+        return (Usuario) session.getAttribute("usuarioLogado");
+    }
 
     @ModelAttribute
-    public void addAttributes(Model model) {
-        model.addAttribute("usuarioAtual", service.buscarUsuario(USUARIO_ATUAL_ID));
-        model.addAttribute("todosUsuarios", service.listarUsuarios());
-    }
-    
-    @GetMapping("/trocar-usuario/{id}")
-    public String trocarUsuario(@PathVariable Long id) {
-        USUARIO_ATUAL_ID = id;
-        return "redirect:/";
+    public void addAttributes(Model model, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u != null) {
+            model.addAttribute("usuarioAtual", u);
+        }
     }
 
     @GetMapping("/")
-    public String index(Model model) {
+    public String index(Model model, HttpSession session) {
+        if (getUsuarioLogado(session) == null) return "redirect:/login";
+        
         model.addAttribute("produtos", service.listarProdutos());
         return "produtos/lista";
     }
 
+    // --- IMAGENS (PRODUTO E PERFIL) ---
+    
     @GetMapping("/imagem/{id}")
     @ResponseBody
-    public ResponseEntity<byte[]> exibirImagem(@PathVariable Long id) {
+    public ResponseEntity<byte[]> exibirImagemProduto(@PathVariable Long id) {
         Produto produto = service.buscarProduto(id);
         if (produto.getImagem() != null) {
             return ResponseEntity.ok()
@@ -50,29 +54,88 @@ public class LojaController {
         return ResponseEntity.notFound().build();
     }
 
+    @GetMapping("/usuario/foto/{id}")
+    @ResponseBody
+    public ResponseEntity<byte[]> exibirFotoPerfil(@PathVariable Long id) {
+        Usuario usuario = service.buscarUsuario(id);
+        if (usuario.getFotoPerfil() != null) {
+            return ResponseEntity.ok()
+                    .contentType(MediaType.valueOf(usuario.getTipoFoto()))
+                    .body(usuario.getFotoPerfil());
+        }
+        // Retorna 404 se não tiver foto
+        return ResponseEntity.notFound().build();
+    }
+
+    // --- PERFIL DO USUÁRIO ---
+
+    @GetMapping("/perfil")
+    public String paginaPerfil(Model model, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+        
+        // Recarrega usuário do banco para garantir dados frescos
+        Usuario usuarioAtualizado = service.buscarUsuario(u.getId());
+        model.addAttribute("usuario", usuarioAtualizado);
+        
+        return "usuario/perfil";
+    }
+
+    @PostMapping("/perfil/atualizar")
+    public String atualizarPerfil(@RequestParam String nome,
+                                  @RequestParam String email,
+                                  @RequestParam(required = false) String senha,
+                                  @RequestParam("foto") MultipartFile foto,
+                                  HttpSession session,
+                                  RedirectAttributes redirect) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+
+        try {
+            Usuario usuarioAtualizado = service.atualizarPerfil(u.getId(), nome, email, senha, foto);
+            
+            // ATUALIZA A SESSÃO para refletir as mudanças (ex: nova foto na navbar)
+            session.setAttribute("usuarioLogado", usuarioAtualizado);
+            
+            redirect.addFlashAttribute("sucesso", "Perfil atualizado com sucesso!");
+        } catch (Exception e) {
+            redirect.addFlashAttribute("erro", "Erro ao atualizar perfil: " + e.getMessage());
+        }
+        return "redirect:/perfil";
+    }
+
+    // --- PRODUTOS ---
+
     @GetMapping("/produto/novo")
-    public String novoProdutoForm(Model model) {
+    public String novoProdutoForm(Model model, HttpSession session) {
+        if (getUsuarioLogado(session) == null) return "redirect:/login";
         model.addAttribute("produto", new Produto());
         return "produtos/formulario";
     }
 
     @PostMapping("/produto/salvar")
     public String salvarProduto(@ModelAttribute Produto produto, 
-                                @RequestParam("imagemFile") MultipartFile file) throws IOException {
+                                @RequestParam("imagemFile") MultipartFile file,
+                                HttpSession session) throws IOException {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
         
         if (produto.getId() != null) {
             Produto antigo = service.buscarProduto(produto.getId());
             produto.setVendedor(antigo.getVendedor());
         }
         
-        service.salvarProduto(produto, USUARIO_ATUAL_ID, file);
+        service.salvarProduto(produto, u, file);
         return "redirect:/";
     }
 
     @GetMapping("/produto/editar/{id}")
-    public String editarProduto(@PathVariable Long id, Model model, RedirectAttributes redirect) {
+    public String editarProduto(@PathVariable Long id, Model model, RedirectAttributes redirect, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+
         Produto p = service.buscarProduto(id);
-        if (!p.getVendedor().getId().equals(USUARIO_ATUAL_ID)) {
+        if (!p.getVendedor().getId().equals(u.getId())) {
             redirect.addFlashAttribute("erro", "Você só pode editar seus próprios produtos.");
             return "redirect:/";
         }
@@ -81,9 +144,12 @@ public class LojaController {
     }
 
     @GetMapping("/produto/deletar/{id}")
-    public String deletarProduto(@PathVariable Long id, RedirectAttributes redirect) {
+    public String deletarProduto(@PathVariable Long id, RedirectAttributes redirect, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+
         Produto p = service.buscarProduto(id);
-        if (!p.getVendedor().getId().equals(USUARIO_ATUAL_ID)) {
+        if (!p.getVendedor().getId().equals(u.getId())) {
             redirect.addFlashAttribute("erro", "Você só pode remover seus próprios produtos.");
             return "redirect:/";
         }
@@ -91,10 +157,15 @@ public class LojaController {
         return "redirect:/";
     }
 
+    // --- CARRINHO ---
+
     @GetMapping("/carrinho")
-    public String verCarrinho(Model model) {
-        model.addAttribute("itens", service.listarCarrinho(USUARIO_ATUAL_ID));
-        Double total = service.listarCarrinho(USUARIO_ATUAL_ID).stream()
+    public String verCarrinho(Model model, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+
+        model.addAttribute("itens", service.listarCarrinho(u));
+        Double total = service.listarCarrinho(u).stream()
             .mapToDouble(i -> i.getSubtotal())
             .sum();
         model.addAttribute("total", total);
@@ -102,9 +173,12 @@ public class LojaController {
     }
 
     @PostMapping("/carrinho/adicionar")
-    public String adicionarAoCarrinho(@RequestParam Long produtoId, @RequestParam Integer quantidade, RedirectAttributes redirect) {
+    public String adicionarAoCarrinho(@RequestParam Long produtoId, @RequestParam Integer quantidade, RedirectAttributes redirect, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+
         try {
-            service.adicionarAoCarrinho(produtoId, quantidade, USUARIO_ATUAL_ID);
+            service.adicionarAoCarrinho(produtoId, quantidade, u);
             redirect.addFlashAttribute("sucesso", "Produto adicionado ao carrinho!");
         } catch (Exception e) {
             redirect.addFlashAttribute("erro", e.getMessage());
@@ -113,28 +187,29 @@ public class LojaController {
     }
 
     @PostMapping("/carrinho/atualizar")
-    public String atualizarCarrinho(@RequestParam Long itemId, @RequestParam Integer quantidade) {
+    public String atualizarCarrinho(@RequestParam Long itemId, @RequestParam Integer quantidade, HttpSession session) {
+        if (getUsuarioLogado(session) == null) return "redirect:/login";
         service.atualizarQuantidadeCarrinho(itemId, quantidade);
         return "redirect:/carrinho";
     }
 
     @GetMapping("/carrinho/remover/{id}")
-    public String removerDoCarrinho(@PathVariable Long id) {
+    public String removerDoCarrinho(@PathVariable Long id, HttpSession session) {
+        if (getUsuarioLogado(session) == null) return "redirect:/login";
         service.removerDoCarrinho(id);
         return "redirect:/carrinho";
     }
 
-    // --- ROTA DE FINALIZAR COMPRA ---
     @PostMapping("/carrinho/finalizar")
-    public String finalizarCompra(RedirectAttributes redirect) {
+    public String finalizarCompra(RedirectAttributes redirect, HttpSession session) {
+        Usuario u = getUsuarioLogado(session);
+        if (u == null) return "redirect:/login";
+
         try {
-            service.finalizarCompra(USUARIO_ATUAL_ID);
-            // Mensagem de sucesso
+            service.finalizarCompra(u);
             redirect.addFlashAttribute("sucesso", "Compra realizada com sucesso! O estoque foi atualizado.");
-            // REDIRECT PARA A PÁGINA PRINCIPAL
             return "redirect:/"; 
         } catch (Exception e) {
-            // Em caso de erro, volta para o carrinho para o usuário ver o problema
             redirect.addFlashAttribute("erro", "Erro ao finalizar compra: " + e.getMessage());
             return "redirect:/carrinho";
         }
