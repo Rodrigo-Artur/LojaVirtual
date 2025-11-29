@@ -1,0 +1,38 @@
+package com.example.LojaVirtual.model;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+@Entity
+@Data
+public class Produto {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "O nome é obrigatório")
+    private String nome;
+
+    private String descricao;
+
+    @NotNull(message = "O preço é obrigatório")
+    @Min(value = 0, message = "O preço deve ser positivo")
+    private Double preco;
+
+    @NotNull
+    @Min(0)
+    private Integer quantidadeEstoque;
+
+    @ManyToOne
+    @JoinColumn(name = "vendedor_id")
+    private Usuario vendedor;
+
+    // --- NOVOS CAMPOS PARA IMAGEM ---
+    @Lob // Indica que é um objeto grande (Large Object)
+    private byte[] imagem;
+    
+    private String tipoImagem; // Ex: image/jpeg, image/png
+}

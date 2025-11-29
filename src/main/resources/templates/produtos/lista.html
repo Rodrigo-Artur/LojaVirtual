@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Loja Virtual</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .produto-img {
+            height: 200px;
+            object-fit: cover;
+            width: 100%;
+            background-color: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">Minha Loja</a>
+            <div class="d-flex text-white align-items-center">
+                <span class="me-2">Logado como: <b th:text="${usuarioAtual.nome}"></b></span>
+                <div class="dropdown">
+                  <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">Trocar</button>
+                  <ul class="dropdown-menu">
+                    <li th:each="u : ${todosUsuarios}">
+                        <a class="dropdown-item" th:href="@{/trocar-usuario/{id}(id=${u.id})}" th:text="${u.nome}"></a>
+                    </li>
+                  </ul>
+                </div>
+                <a href="/carrinho" class="btn btn-warning ms-3">Ver Carrinho</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
+        <div th:if="${sucesso}" class="alert alert-success" th:text="${sucesso}"></div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>Produtos à Venda</h2>
+            <a href="/produto/novo" class="btn btn-success">+ Anunciar Produto</a>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3 mb-4" th:each="prod : ${produtos}">
+                <div class="card h-100 shadow-sm">
+                    
+                    <div th:if="${prod.imagem != null}">
+                        <img th:src="@{/imagem/{id}(id=${prod.id})}" class="card-img-top produto-img" alt="Imagem do Produto">
+                    </div>
+                    <div th:if="${prod.imagem == null}" class="produto-img">
+                        <span>Sem Imagem</span>
+                    </div>
+
+                    <div class="card-body">
+                        <h5 class="card-title text-truncate" th:text="${prod.nome}">Nome</h5>
+                        <h6 class="card-subtitle mb-2 text-success font-weight-bold">R$ <span th:text="${prod.preco}">0.00</span></h6>
+                        <p class="card-text small text-muted" th:text="${prod.descricao}" style="height: 40px; overflow: hidden;">Desc</p>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                             <small class="text-muted">Por: <span th:text="${prod.vendedor.nome}"></span></small>
+                             <!-- Mostra o estoque em vermelho se for zero -->
+                             <span th:class="${prod.quantidadeEstoque > 0 ? 'badge bg-secondary' : 'badge bg-danger'}" 
+                                   th:text="${prod.quantidadeEstoque > 0 ? 'Estoque: ' + prod.quantidadeEstoque : 'Esgotado'}">
+                             </span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer bg-white border-top-0">
+                        <div th:if="${prod.vendedor.id == usuarioAtual.id}" class="d-grid gap-2">
+                            <a th:href="@{/produto/editar/{id}(id=${prod.id})}" class="btn btn-sm btn-outline-primary">Editar</a>
+                            <a th:href="@{/produto/deletar/{id}(id=${prod.id})}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza?')">Excluir</a>
+                        </div>
+
+                        <div th:if="${prod.vendedor.id != usuarioAtual.id}">
+                            
+                            <!-- EXIBE SE TIVER ESTOQUE -->
+                            <form th:if="${prod.quantidadeEstoque > 0}" action="/carrinho/adicionar" method="post" class="d-flex gap-2">
+                                <input type="hidden" name="produtoId" th:value="${prod.id}">
+                                <input type="number" name="quantidade" value="1" min="1" class="form-control form-control-sm" style="width: 60px;">
+                                <button type="submit" class="btn btn-sm btn-success w-100">Comprar</button>
+                            </form>
+                            
+                            <!-- EXIBE SE ESTIVER SEM ESTOQUE -->
+                            <button th:if="${prod.quantidadeEstoque <= 0}" type="button" class="btn btn-sm btn-danger w-100" disabled>
+                                Indisponível para a compra
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

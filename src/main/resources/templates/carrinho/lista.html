@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Meu Carrinho</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        
+        <!-- Mensagens de Feedback -->
+        <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
+        
+        <h2>Meu Carrinho de Compras</h2>
+        <a href="/" class="btn btn-outline-secondary mb-3">&larr; Voltar para Loja</a>
+
+        <div th:if="${itens.empty}" class="alert alert-info">
+            Seu carrinho está vazio.
+        </div>
+
+        <div th:if="${!itens.empty}">
+            <table class="table table-white table-hover shadow-sm">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Preço Unit.</th>
+                        <th>Quantidade</th>
+                        <th>Subtotal</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${itens}">
+                        <td th:text="${item.produto.nome}">Produto</td>
+                        <td th:text="'R$ ' + ${item.produto.preco}">Preço</td>
+                        <td style="width: 150px;">
+                            <form action="/carrinho/atualizar" method="post" class="d-flex">
+                                <input type="hidden" name="itemId" th:value="${item.id}">
+                                <input type="number" name="quantidade" th:value="${item.quantidade}" min="1" class="form-control form-control-sm me-2">
+                                <button type="submit" class="btn btn-sm btn-primary">Ok</button>
+                            </form>
+                        </td>
+                        <td th:text="'R$ ' + ${item.subtotal}">Subtotal</td>
+                        <td>
+                            <a th:href="@{/carrinho/remover/{id}(id=${item.id})}" class="btn btn-sm btn-danger">Remover</a>
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="table-dark">
+                        <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                        <td colspan="2"><strong th:text="'R$ ' + ${total}"></strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="text-end">
+                <!-- BOTÃO FINALIZAR AGORA É UM FORMULÁRIO -->
+                <form action="/carrinho/finalizar" method="post" onsubmit="return confirm('Confirmar a compra dos itens?')">
+                    <button type="submit" class="btn btn-success btn-lg">Finalizar Compra</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
